@@ -1,20 +1,22 @@
 
 # BLACK OPS 1: DEFINITIVE TOOL
 
-A tool to configure and get info of your games in one place
+A tool to <strong>configure</strong> and get <strong>info</strong> of your games in one place.
 
 
 ## Instalation
 
-pip install twitchio watchdog
+- download last version of <strong>Python</strong>
 
-Twitch oauth generator (SELECT CHATBOT)
-https://twitchtokengenerator.com/
+- pip install twitchio watchdog
 
-In AutoTIM.py set:
-TOKEN_1
-CHANNEL
-LOG_FILE_PATH
+- Twitch oauth generator (SELECT CHATBOT)
+   https://twitchtokengenerator.com/
 
-In TExport.py:
-log_dir = r"C:\Program Files (x86)\Steam\steamapps\common\Call of Duty Black Ops\logs"
+-In AutoTIM.py set:
+ TOKEN_1
+ CHANNEL
+ LOG_FILE_PATH
+
+- In TExport.py:
+ log_dir = r"C:\Program Files (x86)\Steam\steamapps\common\Call of Duty Black Ops\logs"
