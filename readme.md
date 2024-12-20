@@ -17,6 +17,8 @@ A tool to <strong>configure</strong> and get <strong>info</strong> of your games
     </ul>
   </li>
   <li>In TExport.py:
+    <ul>
      <li>log_dir = r"C:\Program Files (x86)\Steam\steamapps\common\Call of Duty Black Ops\logs"</li>
+    </ul>
   </li>
    </ul>
