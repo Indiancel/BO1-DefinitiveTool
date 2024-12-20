@@ -1,43 +1,59 @@
 import os
 import sys
 import asyncio
+import time
 from twitchio.ext import commands
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from colorama import init, Fore
 
 # Twitch Bot Configuration
-TOKEN_1 = 'oauth:'  # Token for Twitch bot
+TOKEN_1 = 'TOKEN'
 
 CHANNEL = 'CHANNEL'
 
 # Path to the log file
 LOG_FILE_PATH = r'C:\Program Files (x86)\Steam\steamapps\common\Call of Duty Black Ops\logs\output\AHK_TIM_Logs.txt'
 
-
+# Initialize colorama
+init(autoreset=True)
 
 class Bot(commands.Bot):
     def __init__(self, token):
         super().__init__(token=token, prefix='!', initial_channels=[CHANNEL])
         self.current_token = token
         self.paused = False  # Pause flag for message control
+        self.recent_messages = {}  # Cache to track recently sent messages
 
     async def event_ready(self):
-        print(f'Logged in as | {self.nick}')
+        """Override to customize the login output"""
+        print(Fore.GREEN + f'Logged in as | {self.nick}')  # Print login in green color
+        print(Fore.WHITE + "Log: " + Fore.LIGHTBLACK_EX + LOG_FILE_PATH)  # "Log:" in white, path in grey
 
     async def send_message(self, message):
-        """Send a message to Twitch chat only if bot is not paused."""
+        """Send a message to Twitch chat only if bot is not paused and message is not a duplicate."""
+        current_time = time.time()
+
+        # Check if the message was recently sent (within 5 seconds)
+        if message in self.recent_messages:
+            last_sent_time = self.recent_messages[message]
+            if current_time - last_sent_time < 5:
+                return
+
+        # Send the message if not paused and not a duplicate
         if not self.paused:
             channel = self.get_channel(CHANNEL)
             if channel:
                 await channel.send(message)
-                print(f"Message sent to chat: {message}")
+                print(Fore.MAGENTA + message + Fore.WHITE + " sent to chat")  # Purple message + white "sent to chat"
+                self.recent_messages[message] = current_time  # Update the message timestamp
+            else:
+                print(Fore.RED + "Channel not found. Message not sent.")
         else:
-            print("Bot is paused. Message not sent.")
+            print(Fore.RED + "Message not sent.")
 
-    async def restart_bot(self, new_token):
-        """Restart the bot with a new token."""
-        print(f"Restarting bot with new token: {new_token}")
-        os.execv(sys.executable, ['python'] + sys.argv + [new_token])  # Restart the script with the new token
+        # Clean up old messages from the cache (optional, for long-running sessions)
+        self.recent_messages = {msg: ts for msg, ts in self.recent_messages.items() if current_time - ts < 5}
 
     # Command to pause the bot (restricted to broadcaster and moderators)
     @commands.command(name='pause')
@@ -45,8 +61,7 @@ class Bot(commands.Bot):
         if ctx.author.is_broadcaster or ctx.author.is_mod:  # Allow broadcaster and moderators
             self.paused = True
             await ctx.send("Bot paused.")
-        else:
-            print("Only the broadcaster or a moderator can use this command.")
+            print(Fore.RED + "Bot is paused.")
 
     # Command to unpause the bot (restricted to broadcaster and moderators)
     @commands.command(name='unpause')
@@ -54,8 +69,7 @@ class Bot(commands.Bot):
         if ctx.author.is_broadcaster or ctx.author.is_mod:  # Allow broadcaster and moderators
             self.paused = False
             await ctx.send("Bot unpaused.")
-        else:
-            print("Only the broadcaster or a moderator can use this command.")
+            print(Fore.GREEN + "Bot unpaused.")
 
 class LogFileHandler(FileSystemEventHandler):
     def __init__(self, bot):
@@ -71,35 +85,9 @@ class LogFileHandler(FileSystemEventHandler):
         except FileNotFoundError:
             return 0
 
-    async def check_and_change_token(self, line):
-        if "/me Player bought Gewher 43" in line:
-            if self.bot.current_token == TOKEN_2:
-                await self.bot.send_message("/me Juggside")
-                await self.bot.restart_bot(TOKEN_1)
-
-        if "/me Player bought M1 Garand" in line:
-            if self.bot.current_token == TOKEN_1:
-                await self.bot.send_message("/me Quickside")
-                await self.bot.restart_bot(TOKEN_2)
-     
-        if '/me "Five"' in line:
-            if self.bot.current_token == TOKEN_1:
-                await self.bot.send_message("/me Five")
-                await self.bot.restart_bot(TOKEN_3)
-    
-        if "/me Shi No Numa" in line:
-            if self.bot.current_token == TOKEN_1:
-                await self.bot.send_message("/me Shi No Numa")
-                await self.bot.restart_bot(TOKEN_4)
-     
-        if "/me Shangri-La" in line:
-            if self.bot.current_token == TOKEN_1:
-                await self.bot.send_message("/me Shangri-La")
-                await self.bot.restart_bot(TOKEN_5)
-
     def on_modified(self, event):
         if event.src_path == LOG_FILE_PATH:
-            print(f"File modified: {event.src_path}")
+            print(Fore.YELLOW + "File modified")  # Orange color (Yellow is closest in colorama)
 
             try:
                 with open(LOG_FILE_PATH, 'r') as f:
@@ -110,10 +98,7 @@ class LogFileHandler(FileSystemEventHandler):
                         for line in new_lines:
                             line = line.strip()
                             if line:
-                                print(f"Processing line: {line}")
-                                
-                                # Check for token changes and send the message
-                                asyncio.run_coroutine_threadsafe(self.check_and_change_token(line), self.bot.loop)
+                                # Just send the new line as a message without token switching
                                 asyncio.run_coroutine_threadsafe(self.bot.send_message(line), self.bot.loop)
 
                         self.last_position = f.tell()
@@ -121,15 +106,15 @@ class LogFileHandler(FileSystemEventHandler):
                         print("No new lines to read.")
 
             except PermissionError:
-                print(f"Permission denied for {LOG_FILE_PATH}. Check file permissions.")
+                print(Fore.RED + f"Permission denied for {LOG_FILE_PATH}. Check file permissions.")
             except Exception as e:
-                print(f"Error reading file: {e}")
+                print(Fore.RED + f"Error reading file: {e}")
 
 # Initialize and Run the Bot and Observer
 if __name__ == '__main__':
-    # Check if a new token is passed as a command-line argument
+    # Start with the provided token
     new_token = sys.argv[1] if len(sys.argv) > 1 else TOKEN_1
-    bot = Bot(new_token)  # Start with the provided token
+    bot = Bot(new_token)  # Start with TOKEN_1
     event_handler = LogFileHandler(bot)
     observer = Observer()
     observer.schedule(event_handler, path=os.path.dirname(LOG_FILE_PATH), recursive=False)
