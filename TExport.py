@@ -15,6 +15,8 @@ last_position = 0
 powerup_counter = 0
 quick_revive_counter = 0
 player_down_counter = 0
+down_rounds = []  # Track rounds where downs occurred
+death_rounds = []
 cycle_count = 1
 current_round_value = None  # Store the current round value
 dog_round_flag = False  # Flag to check if a dog round was detected
@@ -122,6 +124,7 @@ def process_log_file(file_path):
                         dog_round_flag = False  # Reset flag after processing
                     else:
                         write_output(f"/me Round {current_round_value} - {extra_info}")
+                        break  # Ensure it doesn't process the same line twice in the current loop
 
             elif 'VMNotifcationReceived: "dog_round_starting", Value: 1' in line:
                 dog_round_flag = True
@@ -140,7 +143,20 @@ def process_log_file(file_path):
 
             elif 'VMNotifcationReceived: "powerup_grabbed"' in line:
                 process_powerup_grabbed()
-                
+            
+            elif 'Got chat message: "!dropmissed"' in line:
+                write_output("/me DROP MISSED")
+                process_powerup_grabbed()
+         
+            elif ":!downs" in line:
+                if down_rounds:
+                    rounds_message = " ".join(f"[{round}]" for round in down_rounds)
+                    write_output(f"/me Downs: {player_down_counter} | {rounds_message}")
+                    break  # Ensure it doesn't process the same line twice in the current loop
+                else:
+                    write_output("/me Downs: 0")
+                    break  # Ensure it doesn't process the same line twice in the current loop
+         
             # Door-opening events
             elif 'VMNotifcationReceived: "center_building_upstairs_buy"' in line or \
                  'VMNotifcationReceived: "outside_east_zone", Value:' in line or \
@@ -163,7 +179,23 @@ def process_log_file(file_path):
 
             elif 'VMNotifcationReceived: "end_game"' in line:
                 if current_round_value is not None:
-                    write_output(f"/me GAME OVER ROUND {current_round_value}")
+                    # Track the current round as the death round
+                    death_rounds.append(current_round_value)
+
+                # Keep only the last 5 games in the list
+                if len(death_rounds) > 5:
+                    death_rounds.pop(0)  # Remove the oldest entry if we exceed 5
+            
+                # Keep the original behavior of outputting the game over round
+                write_output(f"/me GAME OVER ROUND {current_round_value}")
+            
+            elif ":!last" in line:
+                if death_rounds:
+                    death_rounds_message = ", ".join(str(round) for round in death_rounds)
+                    write_output(f"/me LAST 5 GAMES: {death_rounds_message}")
+                else:
+                    write_output("/me NO PREVIOUS GAMES YET")
+
 
             elif 'Received PlayerCmd update for event "giveweapon" for player #0:' in line:
                 if '"m14_zm"' in line:
@@ -243,13 +275,14 @@ def write_output(content):
         f.write(content + '\n')
 
 def reset_counters():
-    global powerup_counter, quick_revive_counter, player_down_counter, cycle_count, dog_round_flag, current_round_value
+    global powerup_counter, quick_revive_counter, player_down_counter, cycle_count, dog_round_flag, current_round_value, down_rounds
     powerup_counter = 0
     quick_revive_counter = 0
     player_down_counter = 0
     cycle_count = 1
     dog_round_flag = False
     current_round_value = None
+    down_rounds = []
 
 def process_powerup_grabbed():
     global powerup_counter, cycle_count
@@ -268,12 +301,17 @@ def process_quick_revive():
     quick_revive_counter += 1
     message = f"/me BOUGHT QUICK REVIVE ({quick_revive_counter})"
     write_output(message)
-
+    
 def process_player_down():
-    global player_down_counter
+    global player_down_counter, down_rounds, current_round_value
     player_down_counter += 1
+    if current_round_value is not None:
+        down_rounds.append(current_round_value)  # Track the round of the down
     message = f"/me DOWNED ({player_down_counter})"
     write_output(message)
+    
+    
+    
 
 def ordinal(n):
     return "%d%s" % (n, "tsnrhtdd"[((n//10%10!=1)*(n%10<4)*n%10)::4])
