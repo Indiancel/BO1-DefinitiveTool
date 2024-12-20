@@ -1,4 +1,4 @@
-<h1>BLACK OPS 1: DEFINITIVE TOOL</h1>
+<h4>BLACK OPS 1: DEFINITIVE TOOL</h4>
 # BLACK OPS 1: DEFINITIVE TOOL
 A tool to configure and get info of your games in one place
 
