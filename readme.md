@@ -1,4 +1,6 @@
-# BLACK OPS 1: DEFINITIVE TOOL ![alt text](https://i.imgur.com/5wU7bs9.png)
+
+
+![](https://i.imgur.com/WrpeLuM.png)
 
 A tool to <strong>configure</strong> and get <strong>info</strong> of your games in one place.
 
